@@ -1,96 +1,66 @@
 package com.sg.iss.nus.Workshop._6.service;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sg.iss.nus.Workshop._6.model.BoardGame;
-
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
 
 @Service
 public class GameRestService {
 
     @Autowired
-    private RedisTemplate<String, String> template; // Inject RedisTemplate
+    private RedisTemplate<String, Object> template; // Inject RedisTemplate
 
-    RestTemplate restTemplate = new RestTemplate();
+    public List<BoardGame> getAllBoardGame() {
+        // Retrieve all keys matching the pattern for board games
+        Set<String> keys = template.keys("*"); // Use a specific pattern if needed, e.g., "boardgame:*"
 
-    String filePath = "game.json";
-
-    public List<BoardGame> getAllBoardGame() throws IOException {
-
-        String boardgameData = new String(Files.readAllBytes(Paths.get(filePath)));
-        JsonReader jReader = Json.createReader(new StringReader(boardgameData));
-        JsonArray jArray = jReader.readArray();
-
+        // Initialize the list to hold all board games
         List<BoardGame> boardGamesList = new ArrayList<>();
 
-        for (int i = 0; i < jArray.size(); i++) {
-            JsonObject jsonObject = jArray.getJsonObject(i);
+        // Loop through each key and retrieve the board game
+        if (keys != null) {
+            for (String key : keys) {
+                Object boardGameObj = template.opsForValue().get(key);
 
-            BoardGame boardGame = new BoardGame();
-            boardGame.setGameId(jsonObject.getInt("gid"));
-            boardGame.setGameName(jsonObject.getString("name"));
-            boardGame.setGameUrl(jsonObject.getString("url"));
-
-            boardGamesList.add(boardGame);
+                if (boardGameObj instanceof BoardGame) {
+                    boardGamesList.add((BoardGame) boardGameObj);
+                }
+            }
         }
+
         return boardGamesList;
     }
 
     public String insertBoardGame(BoardGame boardGame) {
-
         // Generate a unique Redis key based on the game ID
-        String redisKey = boardGame.getGameId().toString();
+        String redisKey = "boardgame:" + boardGame.getGid();
 
-        try {
-            // Serialize the BoardGame object to JSON
-            ObjectMapper mapper = new ObjectMapper();
-            String boardGameJson = mapper.writeValueAsString(boardGame);
+        // Save the object directly into Redis
+        template.opsForValue().set(redisKey, boardGame);
 
-            // Save the serialized object into Redis
-            template.opsForValue().set(redisKey, boardGameJson);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error serializing board game object", e);
-        }
-
-        // Return the Redis key
-        return redisKey;
+        return redisKey; // Return the Redis key
     }
 
-    public BoardGame getBoardGameById(Integer boardGameId) {
+    public BoardGame getBoardGameById(String boardGameId) {
         // Generate the Redis key for the board game
-        String redisKey = boardGameId.toString();
+        String redisKey = boardGameId;
 
-        // Retrieve the JSON string from Redis
-        String boardGameJson = template.opsForValue().get(redisKey);
+        // Retrieve the object from Redis
+        Object boardGameObj = template.opsForValue().get(redisKey);
 
-        // Return null if the board game is not found
-        if (boardGameJson == null) {
+        // Return null if not found
+        if (boardGameObj == null) {
             return null;
         }
 
-        // Deserialize the JSON string into a BoardGame object
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(boardGameJson, BoardGame.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error parsing board game JSON", e);
-        }
+        // Cast and return the object as BoardGame
+        return (BoardGame) boardGameObj;
     }
 
     public boolean updateBoardGame(Integer boardGameId, BoardGame boardGame, boolean upsert) {
@@ -105,17 +75,9 @@ public class GameRestService {
             return false;
         }
 
-        try {
-            // Serialize the BoardGame object to JSON
-            ObjectMapper mapper = new ObjectMapper();
-            String boardGameJson = mapper.writeValueAsString(boardGame);
+        // Update or insert the board game in Redis
+        template.opsForValue().set(redisKey, boardGame);
 
-            // Update or insert the document in Redis
-            template.opsForValue().set(redisKey, boardGameJson);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error serializing board game object", e);
-        }
-
-        return true;
+        return true; // Indicate success
     }
 }

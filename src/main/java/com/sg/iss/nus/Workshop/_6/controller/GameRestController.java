@@ -1,6 +1,7 @@
 package com.sg.iss.nus.Workshop._6.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sg.iss.nus.Workshop._6.model.BoardGame;
 import com.sg.iss.nus.Workshop._6.service.GameRestService;
 
@@ -35,7 +37,7 @@ public class GameRestController {
     }
 
     @GetMapping("/api/boardgame/{id}")
-    public ResponseEntity<?> getBoardGame(@PathVariable("id") Integer id) {
+    public ResponseEntity<?> getBoardGame(@PathVariable("id") String id) {
         // Fetch the board game from the service
         BoardGame boardGame = gameRestService.getBoardGameById(id);
 
@@ -52,25 +54,46 @@ public class GameRestController {
         return ResponseEntity.ok(boardGame);
     }
 
-    @PostMapping("/api/boardgame")
-    public ResponseEntity<Map<String, Object>> insertBoardGame(@RequestBody BoardGame boardGame) {
-        // Insert the board game and get the Redis key
-        String redisKey = gameRestService.insertBoardGame(boardGame);
-
-        // Prepare the response payload
+    @PostMapping("/api/boardgames")
+    public ResponseEntity<Map<String, Object>> insertBoardGames(@RequestBody List<BoardGame> boardGames) {
         Map<String, Object> response = new HashMap<>();
-        response.put("insert_count", 1);
-        response.put("id", redisKey);
+        List<String> insertedKeys = new ArrayList<>();
 
-        // Return the response with 201 Created status
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            // Validate input
+            if (boardGames == null || boardGames.isEmpty()) {
+                response.put("error", "Invalid input");
+                response.put("message", "No board games provided for insertion");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+
+            // Insert each board game
+            for (BoardGame boardGame : boardGames) {
+                if (boardGame.getGid() != null && boardGame.getName() != null) {
+                    String redisKey = gameRestService.insertBoardGame(boardGame);
+                    insertedKeys.add(redisKey);
+                } else {
+                    response.put("skipped", "Some board games were skipped due to missing Game ID or Game Name");
+                }
+            }
+
+            // Prepare response
+            response.put("insert_count", insertedKeys.size());
+            response.put("inserted_ids", insertedKeys);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            response.put("error", "Failed to insert board games");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
     @PutMapping("/api/boardgame/{id}")
     public ResponseEntity<Map<String, Object>> updateBoardGame(
             @PathVariable("id") Integer id,
             @RequestBody BoardGame boardGame,
-            @RequestParam(name = "upsert", defaultValue = "false") boolean upsert) {
+            @RequestParam(name = "upsert", defaultValue = "false") boolean upsert) throws JsonProcessingException {
 
         // Try updating the board game
         boolean isUpdated = gameRestService.updateBoardGame(id, boardGame, upsert);
@@ -88,6 +111,7 @@ public class GameRestController {
         Map<String, Object> response = new HashMap<>();
         response.put("update_count", 1);
         response.put("id", id);
+        response.put("message", "Update successful");
 
         // Return 200 OK status
         return ResponseEntity.ok(response);

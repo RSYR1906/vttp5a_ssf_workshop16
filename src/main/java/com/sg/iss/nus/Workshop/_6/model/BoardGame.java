@@ -1,49 +1,81 @@
 package com.sg.iss.nus.Workshop._6.model;
 
 public class BoardGame {
+    private Integer gid;
+    private String name;
+    private Integer year;
+    private Integer ranking;
+    private Integer usersRated;
+    private String url;
+    private String image;
 
-    private Integer gameId;
+    public BoardGame(){}
 
-    private String gameName;
-
-    private String gameUrl;
-
-    public BoardGame() {
+    public BoardGame(Integer gid, String name, Integer year, Integer ranking, Integer usersRated, String url,
+            String image) {
+        this.gid = gid;
+        this.name = name;
+        this.year = year;
+        this.ranking = ranking;
+        this.usersRated = usersRated;
+        this.url = url;
+        this.image = image;
     }
 
-    public BoardGame(Integer gameId, String gameName, String gameUrl) {
-        this.gameId = gameId;
-        this.gameName = gameName;
-        this.gameUrl = gameUrl;
+    // Getters and setters for all fields
+    public Integer getGid() {
+        return gid;
     }
 
-    public Integer getGameId() {
-        return gameId;
+    public void setGid(Integer gid) {
+        this.gid = gid;
     }
 
-    public void setGameId(Integer gameId) {
-        this.gameId = gameId;
+    public String getName() {
+        return name;
     }
 
-    public String getGameName() {
-        return gameName;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setGameName(String gameName) {
-        this.gameName = gameName;
+    public Integer getYear() {
+        return year;
     }
 
-    public String getGameUrl() {
-        return gameUrl;
+    public void setYear(Integer year) {
+        this.year = year;
     }
 
-    public void setGameUrl(String gameUrl) {
-        this.gameUrl = gameUrl;
+    public Integer getRanking() {
+        return ranking;
     }
 
-    @Override
-    public String toString() {
-        return gameId + "," + gameName + "," + gameUrl;
+    public void setRanking(Integer ranking) {
+        this.ranking = ranking;
     }
 
+    public Integer getUsersRated() {
+        return usersRated;
+    }
+
+    public void setUsersRated(Integer usersRated) {
+        this.usersRated = usersRated;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
 }
